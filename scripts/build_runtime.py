@@ -4,6 +4,7 @@ import argparse
 import os
 import platform
 import subprocess
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -15,7 +16,8 @@ def run(*args, cwd=None):
 
 
 def apply_patches(source):
-    for patch, directory in (("client-metal.patch", "mcpelauncher-client"),
+    for patch, directory in (("client-build.patch", "mcpelauncher-client"),
+                             ("client-metal.patch", "mcpelauncher-client"),
                              ("window-metal.patch", "game-window")):
         path = ROOT / "patches" / patch
         target = source / directory
@@ -55,6 +57,7 @@ def main():
         "-DENABLE_QT_ERROR_UI=OFF", "-DENABLE_DEV_PATHS=OFF")
     run("cmake", "--build", build, "--parallel", str(min(os.cpu_count() or 2, 8)))
     run("cmake", "--install", build)
+    run(sys.executable, ROOT / "scripts/collect_licenses.py")
     runtime = build / "install/bin/mcpelauncher-client"
     run("lipo", "-verify_arch", "arm64", runtime)
     run(runtime, "--version")

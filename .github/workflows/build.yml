@@ -56,4 +56,6 @@ jobs:
             patches/
             .gitmodules
             scripts/build_runtime.py
+            scripts/collect_licenses.py
+            THIRD_PARTY_NOTICES.md
           if-no-files-found: error
