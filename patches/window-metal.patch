@@ -1,0 +1,55 @@
+--- a/src/window_manager_glfw.cpp
++++ b/src/window_manager_glfw.cpp
+@@ -2,11 +2,19 @@
+ #include "window_glfw.h"
+ #include "joystick_manager_glfw.h"
+ #include <stdexcept>
++#include <cstdlib>
++#include <cstring>
+ 
+ GLFWWindowManager::GLFWWindowManager() {
+     // To create a default mapping for not mapped Gamepads
+     // to avoid subtracting heads from buttons again
+     glfwInitHint(GLFW_JOYSTICK_HAT_BUTTONS, 0);
++#ifdef __APPLE__
++    // MacCraft: GLFW must select Metal before initializing the ANGLE display.
++    const char* renderer = std::getenv("MACCRAFT_RENDERER");
++    if(renderer && std::strcmp(renderer, "metal") == 0)
++        glfwInitHint(GLFW_ANGLE_PLATFORM_TYPE, GLFW_ANGLE_PLATFORM_TYPE_METAL);
++#endif
+     if (glfwInit() != GLFW_TRUE)
+         throw std::runtime_error("glfwInit error");
+     GLFWJoystickManager::init();
+--- a/src/window_glfw.cpp
++++ b/src/window_glfw.cpp
+@@ -8,6 +8,8 @@
+ #include <sstream>
+ 
+ #include <math.h>
++#include <cstdlib>
++#include <cstring>
+ 
+ GLFWGameWindow::GLFWGameWindow(const std::string& title, int width, int height, GraphicsApi api) : GameWindow(title, width, height, api), width(width), height(height), windowedWidth(width), windowedHeight(height) {
+ #ifdef GAMEWINDOW_X11_LOCK
+@@ -18,7 +20,9 @@
+         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+         glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
+         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
++        // MacCraft: honor the preflight GLES version; never silently downgrade Metal.
++        const char* minor = std::getenv("MACCRAFT_GLES_MINOR");
++        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minor && std::strcmp(minor, "1") == 0 ? 1 : 0);
+     } else if(api == GraphicsApi::OPENGL) {
+         glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+         glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+@@ -26,7 +30,9 @@
+         glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+     }
+     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+-    if(window == nullptr && api == GraphicsApi::OPENGL_ES2) {
++    const char* renderer = std::getenv("MACCRAFT_RENDERER");
++    const bool explicitMetal = renderer && std::strcmp(renderer, "metal") == 0;
++    if(window == nullptr && api == GraphicsApi::OPENGL_ES2 && !explicitMetal) {
+         // Failed to get es3 request es2
+         glfwDefaultWindowHints();
+         glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);

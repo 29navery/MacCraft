@@ -1,0 +1,10 @@
+/build/
+/dist/
+/.venv/
+__pycache__/
+*.pyc
+*.apk
+*.apks
+*.xapk
+*.so
+.DS_Store
