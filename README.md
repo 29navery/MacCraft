@@ -97,7 +97,7 @@ Make a copy of any existing worlds before testing them. MacCraft does not import
 
 ## Validation and next milestones
 
-The test suite uses synthetic packages; it checks ARM64/package validation, binary manifests, split merging, failed-import cleanup, hostile archive paths, tampering, and launch arguments. CI verifies compilation and runtime `--version`. It does not run Minecraft or test Metal on a physical GPU.
+The test suite uses synthetic packages; it checks ARM64/package validation, binary manifests, split merging, failed-import cleanup, hostile archive paths, tampering, and launch arguments. CI verifies compilation and runtime `--build-info`. It does not run Minecraft or test Metal on a physical GPU.
 
 See [architecture](docs/architecture.md) for the runtime boundary and [testing](docs/testing.md) for the next gameplay acceptance checks.
 

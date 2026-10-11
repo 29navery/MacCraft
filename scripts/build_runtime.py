@@ -18,6 +18,7 @@ def run(*args, cwd=None):
 def apply_patches(source):
     for patch, directory in (("client-build.patch", "mcpelauncher-client"),
                              ("client-metal.patch", "mcpelauncher-client"),
+                             ("client-headless.patch", "mcpelauncher-client"),
                              ("window-metal.patch", "game-window")):
         path = ROOT / "patches" / patch
         target = source / directory
@@ -61,7 +62,7 @@ def main():
     runtime = build / "install/bin/mcpelauncher-client"
     run("lipo", runtime, "-verify_arch", "arm64")
     run("otool", "-L", runtime)
-    run(runtime, "--version")
+    run(runtime, "--build-info")
 
 
 if __name__ == "__main__":

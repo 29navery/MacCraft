@@ -11,7 +11,7 @@ python3 scripts/build_runtime.py --prepare-only
 python3 scripts/build_runtime.py --prepare-only
 ```
 
-The package fixtures contain synthetic XML/ELF structures, not Minecraft. GitHub Actions also compiles the native ARM64 compatibility engine and executes `mcpelauncher-client --version`. This tests a build, not game launch.
+The package fixtures contain synthetic XML/ELF structures, not Minecraft. GitHub Actions also compiles the native ARM64 compatibility engine and executes `mcpelauncher-client --build-info`. This tests a build, not game launch.
 
 ## Physical-Mac acceptance checks
 

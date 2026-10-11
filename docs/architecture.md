@@ -14,6 +14,7 @@ ARM64 matching removes CPU instruction-set translation. Android versus Darwin bi
 
 ## MacCraft patches
 
+- `client-headless.patch` adds a build-information command that does not initialize graphics; upstream's `--version` creates an OpenGL window and fails on virtual CI Macs.
 - `client-build.patch` keeps the JNI parent source include path available with the overlay disabled.
 - `client-metal.patch` adds explicit EGL and GLES paths, selects GLES instead of desktop GL for Metal, and skips upstream's bundled Vulkan path when MacCraft specifies a renderer.
 - `window-metal.patch` selects GLFW's Metal platform before initialization, requests the preflight GLES context version, and disables silent fallback to GLES 2 for Metal.
