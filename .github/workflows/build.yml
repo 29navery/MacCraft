@@ -42,20 +42,11 @@ jobs:
           ctest --test-dir build/native --output-on-failure
       - name: Build the patched native Bedrock compatibility runtime
         run: python3 scripts/build_runtime.py
+      - name: Package developer build with executable permissions
+        run: python3 scripts/package_developer.py
       - name: Upload developer build
         uses: actions/upload-artifact@v4
         with:
           name: MacCraft-arm64-developer
-          path: |
-            build/runtime/install/
-            build/native/maccraft-graphics-probe
-            maccraft/
-            README.md
-            LICENSE
-            docs/
-            patches/
-            .gitmodules
-            scripts/build_runtime.py
-            scripts/collect_licenses.py
-            THIRD_PARTY_NOTICES.md
+          path: dist/MacCraft-arm64-developer.tar.gz
           if-no-files-found: error

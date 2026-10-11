@@ -34,6 +34,12 @@ python3 -m maccraft doctor
 
 The build patches two upstream submodules in your local checkout. Patches are idempotent and refuse to apply to unexpected source. A modified submodule status after building is expected. The upstream source revision is `91220f0f7ccfd460090d14056ab1bf12e82869b1`.
 
+## Download a developer build
+
+After a successful [Actions build](https://github.com/29navery/MacCraft/actions), download the `MacCraft-arm64-developer` artifact. Extract the ZIP, then the included `.tar.gz`, which preserves executable permissions. Open a terminal in the extracted `MacCraft` directory. Install `python` and `openssl@3` through Homebrew, then use the import/launch commands below. This artifact contains the native runtime and Python tools; ANGLE is still supplied separately for Metal mode.
+
+The artifact is a developer distribution, not a notarized macOS app. To rebuild it, clone the source repository and follow the build instructions above.
+
 ## Import and launch
 
 Supply your own purchased Google Play Minecraft files. A Windows or iOS purchase is not an Android APK. MacCraft does not download Minecraft, obtain Google credentials, verify APK publisher signatures, or implement store purchasing.

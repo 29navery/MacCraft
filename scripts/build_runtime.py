@@ -59,7 +59,8 @@ def main():
     run("cmake", "--install", build)
     run(sys.executable, ROOT / "scripts/collect_licenses.py")
     runtime = build / "install/bin/mcpelauncher-client"
-    run("lipo", "-verify_arch", "arm64", runtime)
+    run("lipo", runtime, "-verify_arch", "arm64")
+    run("otool", "-L", runtime)
     run(runtime, "--version")
 
 
