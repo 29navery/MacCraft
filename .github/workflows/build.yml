@@ -56,7 +56,7 @@ jobs:
       - name: Smoke-test packaged login and home screens without an account
         env:
           MACCRAFT_UI_SMOKE: ${{ github.workspace }}/build/ui-smoke
-          QT_QPA_PLATFORM: offscreen
+          QT_QPA_PLATFORM: cocoa
           QT_QUICK_BACKEND: software
         run: dist/MacCraft.app/Contents/MacOS/MacCraft --verbose
       - name: Package graphical launcher
