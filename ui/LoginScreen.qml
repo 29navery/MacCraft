@@ -73,7 +73,7 @@ Item {
                     color: "#b8d0c0"; font.pixelSize: 16; lineHeight: 1.2
                     wrapMode: Text.WordWrap; Layout.fillWidth: true
                 }
-                Button {
+                MButton {
                     objectName: "googleSignInButton"
                     text: root.acquiringAccount ? "Signing in…" : "Sign in with Google"
                     Layout.fillWidth: true; implicitHeight: 52
