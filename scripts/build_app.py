@@ -63,8 +63,15 @@ def relocate(app):
                 continue
             source = Path(name)
             if ".framework/" in name:
-                raise RuntimeError("Qt framework was not deployed: " + name)
-            target = frameworks / source.name
+                framework_name, tail = name.split(".framework/", 1)
+                framework_source = Path(framework_name + ".framework")
+                framework_target = frameworks / framework_source.name
+                if not framework_target.exists():
+                    shutil.copytree(framework_source, framework_target, symlinks=True)
+                    pending.extend(p for p in framework_target.rglob("*") if macho(p))
+                target = framework_target / tail
+            else:
+                target = frameworks / source.name
             resolved = source.resolve()
             if source.name in copied and copied[source.name] != resolved:
                 raise RuntimeError("Conflicting bundled dependency: " + source.name)
@@ -75,7 +82,10 @@ def relocate(app):
                 copied[source.name] = resolved
                 pending.append(target)
             relative = os.path.relpath(target, path.parent)
-            run("install_name_tool", "-change", name, "@loader_path/" + relative, path)
+            if path.resolve() == target.resolve():
+                run("install_name_tool", "-id", "@rpath/" + str(target.relative_to(frameworks)), path)
+            else:
+                run("install_name_tool", "-change", name, "@loader_path/" + relative, path)
     # No builder paths should remain in linked dependencies of distributed binaries.
     for path in app.rglob("*"):
         if macho(path):
@@ -126,13 +136,14 @@ def main():
     shutil.copy2(source / "mcpelauncher-ui-qt/Resources/mcpelauncher-icon.icns", app / "Contents/Resources/MacCraft.icns")
     shutil.copy2(native / "bin/mcpelauncher-client", app / "Contents/MacOS/mcpelauncher-client")
     shutil.copy2(ROOT / "build/native/maccraft-graphics-probe", app / "Contents/MacOS/maccraft-graphics-probe")
-    # The native loader locates these Android shim and host audio libraries relative to its executable.
-    shutil.copytree(native / "share/mcpelauncher", app / "Contents/share/mcpelauncher", symlinks=True)
     deploy = next((Path(brew) / path for path in ("opt/qttools/bin/macdeployqt", "opt/qtbase/bin/macdeployqt", "bin/macdeployqt", "opt/qt/bin/macdeployqt") if (Path(brew) / path).exists()), None)
     if deploy is None:
         raise FileNotFoundError("Install Qt's macdeployqt deployment tool")
     run(deploy, app, "-qmldir=" + str(source / "mcpelauncher-ui-qt/qml"),
         "-executable=" + str(app / "Contents/MacOS/mcpelauncher-client"), "-always-overwrite")
+    # Keep ELF Android shims out of macdeployqt, which assumes every .so is Mach-O.
+    # The native loader locates these libraries relative to its executable.
+    shutil.copytree(native / "share/mcpelauncher", app / "Contents/share/mcpelauncher", symlinks=True)
     relocate(app)
     run("lipo", app / "Contents/MacOS/MacCraft", "-verify_arch", "arm64")
     run("lipo", app / "Contents/MacOS/mcpelauncher-client", "-verify_arch", "arm64")
