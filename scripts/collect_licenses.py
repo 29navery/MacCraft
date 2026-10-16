@@ -12,8 +12,15 @@ def collect():
     destination = ROOT / "build/runtime/install/share/maccraft/licenses"
     destination.mkdir(parents=True, exist_ok=True)
     count = 0
-    for prefix, source in (("runtime", ROOT / "vendor/runtime"),
-                           ("downloaded-dependencies", ROOT / "build/runtime/_deps")):
+    sources = [("runtime", ROOT / "vendor/runtime"),
+                           ("downloaded-dependencies", ROOT / "build/runtime/_deps"),
+                           ("launcher", ROOT / "vendor/launcher")]
+    if shutil.which("brew"):
+        brew = Path(subprocess.check_output(["brew", "--prefix"], text=True).strip())
+        for formula in ("qtbase", "qtdeclarative", "qtwebengine", "qtwebchannel", "qtsvg", "qttools", "protobuf", "abseil", "libzip", "openssl@3"):
+            if (brew / "opt" / formula).exists():
+                sources.append(("dependencies/" + formula, (brew / "opt" / formula).resolve()))
+    for prefix, source in sources:
         if not source.exists():
             continue
         for path in source.rglob("*"):

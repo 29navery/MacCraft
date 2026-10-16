@@ -1,3 +1,6 @@
 [submodule "vendor/runtime"]
     path = vendor/runtime
     url = https://github.com/minecraft-linux/mcpelauncher-manifest.git
+[submodule "vendor/launcher"]
+    path = vendor/launcher
+    url = https://github.com/minecraft-linux/mcpelauncher-ui-manifest.git

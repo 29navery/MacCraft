@@ -1,8 +1,18 @@
 # Architecture
 
+## Graphical launcher
+
+`vendor/launcher` pins the upstream Qt 6 launcher manifest at `779d057d9d729e492c403d4e0927006342da1dfe`. The MacCraft app uses its Google Play API, Google-owned sign-in page, purchase checks, delivery and split-package extraction, profiles, and native process launching. MacCraft adds the welcome screen, ARM64-only store configuration, separate storage, Keychain-held account encryption key, private browser profile, and app deployment. The UI does not use the Python CLI to download or run games.
+
+`launcher-maccraft.patch` adapts the UI identity, native process environment, build, and no-account UI smoke mode. `launcher-signin.patch` makes certificate errors fail closed and waits for the Google completion URL and both credential cookies before completing login. Only Google-domain cookies are accepted. The C++ Keychain adapter is compiled into the app; saved account tokens and API token caches retain upstream encryption.
+
+`build_app.py` copies the native runtime, deploys Qt/QML/WebEngine, bundles remaining non-system dylibs, rejects linked build-machine paths, and ad-hoc signs the app. `package_app.py` creates a drag-to-Applications DMG. No Google credentials or game files are involved in builds. Account login and real game delivery require manual acceptance testing.
+
+The graphical app uses `store-versions` so its upstream metadata format does not collide with the older Python importer’s `versions` directory. Both launch paths use `MacCraft/data` for default worlds.
+
 The native execution engine comes from the pinned mcpelauncher source, rather than a new incomplete ELF loader. MacCraft supplies installation, launch policy, and explicit Metal configuration. Dependencies are checked out as git submodules; they are not copied into MacCraft-owned source files.
 
-## Execution boundaries
+## Developer CLI execution boundaries
 
 1. Python reads the user's APK files, validates Android binary manifests and AArch64 ELF headers, and installs assets/libraries without executing them.
 2. The launcher validates the macOS host architecture and native runtime binary. It checks installation hashes before execution.
@@ -23,6 +33,6 @@ The original sources stay in the GPL upstream submodules. Patches fail closed wh
 
 ## Limits
 
-The probe uses an offscreen pbuffer; Cocoa surface creation and presentation still need testing on a Mac. Native execution does not establish full Android compatibility. Upstream account integrations may depend on separate MSA daemon/webview components; this initial headless build does not package them, so Microsoft sign-in and account-dependent features remain incomplete. There is no Google Play downloader or APK signature verification.
+The probe uses an offscreen pbuffer; Cocoa surface creation and presentation still need testing on a Mac. Native execution does not establish full Android compatibility. Upstream account integrations may depend on separate MSA daemon/webview components; this initial headless build does not package them, so Microsoft sign-in and account-dependent features remain incomplete. The older Python CLI has no Google Play downloader; Google Play delivery is implemented by the graphical launcher. APK publisher-signature verification is not implemented by MacCraft.
 
 ANGLE Metal may lack features required by a particular game build. This prototype does not implement a MoltenVK backend, replace RenderDragon, or bypass graphics feature requirements. A real current ARM64 Minecraft APK plus physical Apple silicon hardware is needed to assess those gaps.

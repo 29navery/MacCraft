@@ -23,7 +23,7 @@ jobs:
           ctest --test-dir build/native --output-on-failure
   native-arm64:
     runs-on: macos-15
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +34,7 @@ jobs:
       - name: Verify native runner and install dependencies
         run: |
           test "$(uname -m)" = arm64
-          brew install cmake ninja openssl@3
+          brew install cmake ninja openssl@3 qtbase qtdeclarative qtsvg qtwebengine qttools protobuf libzip
       - name: Build MacCraft graphics probe and test package handling
         run: |
           cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_OSX_ARCHITECTURES=arm64
@@ -42,6 +42,29 @@ jobs:
           ctest --test-dir build/native --output-on-failure
       - name: Build the patched native Bedrock compatibility runtime
         run: python3 scripts/build_runtime.py
+      - name: Build and deploy MacCraft.app
+        run: python3 scripts/build_app.py
+      - name: Smoke-test packaged login and home screens without an account
+        env:
+          MACCRAFT_UI_SMOKE: ${{ github.workspace }}/build/ui-smoke
+          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
+        run: dist/MacCraft.app/Contents/MacOS/MacCraft --verbose
+      - name: Package graphical launcher
+        run: python3 scripts/package_app.py
+      - name: Upload MacCraft app
+        uses: actions/upload-artifact@v4
+        with:
+          name: MacCraft-macOS-arm64
+          path: dist/MacCraft-arm64.dmg
+          if-no-files-found: error
+      - name: Upload UI previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MacCraft-UI-previews
+          path: build/ui-smoke/
+          if-no-files-found: ignore
       - name: Package developer build with executable permissions
         run: python3 scripts/package_developer.py
       - name: Upload developer build

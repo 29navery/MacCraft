@@ -1,0 +1,318 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -6,7 +6,7 @@
+ set(CMAKE_AUTOMOC ON)
+ set(CMAKE_AUTORCC ON)
+ # protobuf now requires c++14
+-set(CMAKE_CXX_STANDARD 14)
++set(CMAKE_CXX_STANDARD 17)
+ set(CMAKE_CXX_STANDARD_REQUIRED ON)
+ 
+ set(CMAKE_AUTOMOC ON)
+@@ -110,7 +110,18 @@
+ endif()
+ 
+ if (APPLE)
+-    target_sources(${PROJECT_NAME} PUBLIC launcherapp_osx.mm supportedandroidabis.mm)
++    target_sources(${PROJECT_NAME} PUBLIC launcherapp_osx.mm supportedandroidabis.mm MacCraftKeychain.mm)
++    set_source_files_properties(MacCraftKeychain.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
++    target_link_libraries(${PROJECT_NAME} "-framework Security")
++    target_compile_definitions(${PROJECT_NAME} PRIVATE DISABLE_32BIT)
++    set_target_properties(${PROJECT_NAME} PROPERTIES MACOSX_BUNDLE TRUE OUTPUT_NAME "MacCraft"
++        MACOSX_BUNDLE_GUI_IDENTIFIER "org.maccraft.launcher"
++        MACOSX_BUNDLE_BUNDLE_NAME "MacCraft"
++        MACOSX_BUNDLE_BUNDLE_VERSION "2"
++        MACOSX_BUNDLE_SHORT_VERSION_STRING "0.2.0"
++        MACOSX_BUNDLE_ICON_FILE "MacCraft.icns")
++    set_source_files_properties(Resources/mcpelauncher-icon.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
++    target_sources(${PROJECT_NAME} PRIVATE Resources/mcpelauncher-icon.icns)
+     target_link_libraries(${PROJECT_NAME} "-framework AppKit")
+     if(ENABLE_SPARKLE_UPDATE_CHECK)
+         target_sources(${PROJECT_NAME} PUBLIC sparkle_updatechecker.mm)
+@@ -133,7 +144,7 @@
+     target_link_libraries(${PROJECT_NAME} z libappimageupdate)
+ endif()
+ 
+-install(TARGETS mcpelauncher-ui-qt RUNTIME COMPONENT mcpelauncher-ui-qt DESTINATION bin)
++install(TARGETS mcpelauncher-ui-qt BUNDLE DESTINATION . RUNTIME DESTINATION bin)
+ if (NOT APPLE)
+     install(FILES mcpelauncher-ui-qt.desktop COMPONENT mcpelauncher-ui-qt DESTINATION share/applications)
+     install(FILES Resources/mcpelauncher-icon.svg RENAME mcpelauncher-ui-qt.svg
+--- a/main.cpp
++++ b/main.cpp
+@@ -20,6 +20,9 @@
+ #include "downloadtask.h"
+ 
+ #include <QTranslator>
++#include <QTimer>
++#include <QQuickWindow>
++#include <QImage>
+ #include <QCommandLineParser>
+ #include <QCommandLineOption>
+ #include <curl/curl.h>
+@@ -60,10 +63,15 @@
+ #endif
+     curl_global_init(CURL_GLOBAL_ALL);
+     Q_INIT_RESOURCE(googlesigninui);
+-    QCoreApplication::setOrganizationName("Minecraft Linux Launcher");
+-    QCoreApplication::setOrganizationDomain("mrarm.io");
+-    QCoreApplication::setApplicationName("Minecraft Linux Launcher UI");
+-
++    QCoreApplication::setOrganizationName("MacCraft");
++    QCoreApplication::setOrganizationDomain("org.maccraft");
++    QCoreApplication::setApplicationName("MacCraft");
++
++    const bool smokeTest = qEnvironmentVariableIsSet("MACCRAFT_UI_SMOKE");
++    if(smokeTest) {
++        QStandardPaths::setTestModeEnabled(true);
++        QCoreApplication::setApplicationName("MacCraftSmoke");
++    }
+     LauncherApp app(argc, argv);
+     QTranslator translator;
+     if (translator.load(QLocale(), QLatin1String("mcpelauncher"), QLatin1String("_"), QLatin1String(":/translations"))) {
+@@ -76,7 +84,7 @@
+ #endif
+ 
+     QCommandLineParser parser;
+-    parser.setApplicationDescription("Minecraft Linux Launcher UI");
++    parser.setApplicationDescription("MacCraft");
+     parser.addPositionalArgument("file", "file or uri to open with the default profile");
+     parser.addHelpOption();
+     QCommandLineOption devmodeOption(QStringList() << "d" << "enable-devmode", 
+@@ -149,6 +157,7 @@
+ 
+     QQmlApplicationEngine engine;
+     engine.rootContext()->setContextProperty("application", &app);
++    engine.rootContext()->setContextProperty("MACCRAFT_SMOKE_TEST", smokeTest);
+ #ifdef LAUNCHER_VERSION_NAME
+     engine.rootContext()->setContextProperty("LAUNCHER_VERSION_NAME", QVariant(LAUNCHER_VERSION_NAME));
+ #else
+@@ -350,5 +359,21 @@
+ #endif
+     }
+ 
++    if(smokeTest) {
++        const auto screenshots = qEnvironmentVariable("MACCRAFT_UI_SMOKE");
++        QDir().mkpath(screenshots);
++        QTimer::singleShot(2500, &app, [&app, &engine, screenshots]() {
++            auto window = qobject_cast<QQuickWindow*>(engine.rootObjects().first());
++            if(!window || !window->findChild<QObject*>("googleSignInButton") ||
++               !window->grabWindow().save(screenshots + "/login.png")) {
++                app.exit(10);
++                return;
++            }
++            QMetaObject::invokeMethod(window, "smokeShowHome");
++            QTimer::singleShot(2000, &app, [&app, window, screenshots]() {
++                app.exit(window->grabWindow().save(screenshots + "/home.png") ? 0 : 11);
++            });
++        });
++    }
+     return app.exec();
+ }
+--- a/googleloginhelper.cpp
++++ b/googleloginhelper.cpp
+@@ -8,14 +8,23 @@
+ #include "supportedandroidabis.h"
+ #include "launchersettings.h"
+ #include "encryption.h"
++#include "MacCraftKeychain.h"
++#include <QTimer>
+ 
+ std::string GoogleLoginHelper::getTokenCachePath() {
+     return QDir(QStandardPaths::writableLocation(QStandardPaths::CacheLocation)).filePath("playapi_token_cache.conf").toStdString();
+ }
+ 
+ GoogleLoginHelper::GoogleLoginHelper() : loginCache(getTokenCachePath()), login(device, loginCache) {
+-    unlockkey = settings.value("key").toString();
+-    loadAccount();
++    if(!qEnvironmentVariableIsSet("MACCRAFT_UI_SMOKE")) {
++        try {
++            unlockkey = macCraftReadAccountKey();
++            loadAccount();
++        } catch(const std::exception& ex) {
++            const auto message = QString::fromUtf8(ex.what());
++            QTimer::singleShot(0, this, [this, message]() { emit loginError(message); });
++        }
++    }
+ }
+ 
+ GoogleLoginHelper::~GoogleLoginHelper() {
+@@ -86,7 +95,7 @@
+     if (window)
+         return;
+     window = new GoogleLoginWindow();
+-    window->setAttribute(Qt::WA_DeleteOnClose);
++    window->setAttribute(Qt::WA_DeleteOnClose, false);
+     window->winId();
+     window->windowHandle()->setTransientParent(parent);
+     window->move(parent->x() + parent->width() / 2 - window->width() / 2, parent->y() + parent->height() / 2 - window->height() / 2);
+@@ -97,12 +106,10 @@
+ void GoogleLoginHelper::onLoginFinished(int code) {
+     if (code == QDialog::Accepted) {
+         try {
+-            unlockkey = window->encryptionToken();
+             Encryption enc;
+-            if(unlockkey.isEmpty()) {
+-                unlockkey = QString::fromStdString(enc.RandomKey());
+-                settings.setValue("key", unlockkey);
+-            }
++            if(unlockkey.isEmpty()) unlockkey = QString::fromStdString(enc.RandomKey());
++            macCraftStoreAccountKey(unlockkey);
++            settings.remove("key");
+             loginCache.clear();
+             loginCache.setKey(unlockkey.toStdString());
+             login.perform_with_access_token(window->accountToken().toStdString(), window->accountIdentifier().toStdString(), true)->call();
+@@ -131,6 +138,7 @@
+         accountAcquireFinished(nullptr);
+     }
+     emit accountInfoChanged();
++    window->deleteLater();
+     window = nullptr;
+ }
+ 
+@@ -163,6 +171,9 @@
+ }
+ 
+ void GoogleLoginHelper::signOut() {
++    try { macCraftDeleteAccountKey(); }
++    catch(const std::exception& ex) { emit loginError(QString::fromUtf8(ex.what())); }
++    unlockkey.clear();
+     hasAccount = false;
+     currentAccount.setAccountIdentifier("");
+     currentAccount.setAccountUserId("");
+--- a/gamelauncher.cpp
++++ b/gamelauncher.cpp
+@@ -3,6 +3,7 @@
+ #include "EnvPathUtil.h"
+ #include <QFile>
+ #include <QDir>
++#include <QStandardPaths>
+ #include "supportedandroidabis.h"
+ #include <sstream>
+ #include <modmanager.h>
+@@ -147,6 +148,28 @@
+             env.insert(*it, m_profile->env->value(*it).toString());
+         }
+     }
++    // MacCraft keeps game data out of another launcher's default directories.
++    const auto root = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("MacCraft");
++    if(!m_profile || !m_profile->dataDirCustom) args << "-dd" << root + "/data/";
++    args << "-dc" << root + "/cache/";
++    QDir().mkpath(root + "/data");
++    QDir().mkpath(root + "/cache");
++    env.insert("MACCRAFT_RENDERER", "legacy");
++    env.remove("MACCRAFT_EGL_LIBRARY");
++    env.remove("MACCRAFT_GLES_LIBRARY");
++    const auto angle = QDir(QString::fromStdString(EnvPathUtil::getAppDir())).filePath("../Frameworks/angle");
++    if(m_profile && m_profile->graphicsAPI == 1) {
++        if(!QFile::exists(angle + "/libEGL.dylib") || !QFile::exists(angle + "/libGLESv2.dylib")) {
++            emit logAppended(tr("Metal rendering is not available in this build. Select Default graphics in the profile editor.\n"));
++            process.reset();
++            emit launchFailed();
++            return;
++        }
++        env.insert("MACCRAFT_RENDERER", "metal");
++        env.insert("MACCRAFT_EGL_LIBRARY", angle + "/libEGL.dylib");
++        env.insert("MACCRAFT_GLES_LIBRARY", angle + "/libGLESv2.dylib");
++        args << "--force-opengles";
++    }
+     process->setProcessEnvironment(env);
+     process->setProcessChannelMode(QProcess::MergedChannels);
+     if (m_disableGameLog) {
+--- a/qml/main.qml
++++ b/qml/main.qml
+@@ -8,9 +8,11 @@
+ Window {
+     id: window
+     visible: true
+-    width: 640
+-    height: 480
+-    title: qsTr("Linux Minecraft Launcher")
++    width: 1000
++    height: 640
++    minimumWidth: 640
++    minimumHeight: 580
++    title: "MacCraft"
+     color: "#333333"
+     property bool hasUpdate: false
+     property bool hasAskedForKey: false
+@@ -26,7 +28,7 @@
+     GoogleLoginHelper {
+         id: googleLoginHelperInstance
+         includeIncompatible: launcherSettings.showUnsupported
+-        singleArch: launcherSettings.singleArch
++        singleArch: "arm64-v8a"
+         chromeOS: launcherSettings.chromeOSMode || launcherSettings.trialMode
+     }
+ 
+@@ -307,6 +309,10 @@
+         }
+     }
+ 
++    function smokeShowHome() {
++        if(MACCRAFT_SMOKE_TEST) stackView.replace(panelMain)
++    }
++
+     function needsToLogIn() {
+         return googleLoginHelperInstance.account == null && !googleLoginHelperInstance.hasEncryptedCredentials && versionManagerInstance.versions.size === 0
+     }
+@@ -319,10 +325,13 @@
+             isVersionsInitialized = true
+             console.log("Versionslist initialized")
+         })
+-        versionManagerInstance.downloadLists(googleLoginHelperInstance.getAbis(true), launcherSettings.versionsFeedBaseUrl)
++        if(!MACCRAFT_SMOKE_TEST)
++            versionManagerInstance.downloadLists(googleLoginHelperInstance.getAbis(true), launcherSettings.versionsFeedBaseUrl)
++        else
++            window.isVersionsInitialized = true
+         if (SAFE_MODE) {
+             stackView.push(panelSafeMode)
+-        } else if (LAUNCHER_CHANGE_LOG.length !== 0 && launcherSettings.lastVersion < LAUNCHER_VERSION_CODE) {
++        } else if (launcherSettings.lastVersion > 0 && LAUNCHER_CHANGE_LOG.length !== 0 && launcherSettings.lastVersion < LAUNCHER_VERSION_CODE) {
+             stackView.push(panelChangelog)
+         } else {
+             next()
+--- a/launchersettings.h
++++ b/launchersettings.h
+@@ -76,7 +76,7 @@
+     void setShowNotifications(bool value) { settings.setValue("showNotifications", value); emit settingsChanged(); }
+ 
+     QUrl gameDataDir() {
+-        return QUrl::fromLocalFile(QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("mcpelauncher"));
++        return QUrl::fromLocalFile(QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("MacCraft/data"));
+     }
+ 
+     QString versionsFeedBaseUrl() const {
+--- a/profilemanager.cpp
++++ b/profilemanager.cpp
+@@ -4,7 +4,7 @@
+ #include <QStandardPaths>
+ 
+ ProfileManager::ProfileManager(QObject *parent) : QObject(parent) {
+-    m_baseDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("mcpelauncher/profiles");
++    m_baseDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("MacCraft/profiles");
+     QDir().mkpath(m_baseDir);
+ 
+     m_defaultProfile = new ProfileInfo(this);
+--- a/versionmanager.cpp
++++ b/versionmanager.cpp
+@@ -10,7 +10,7 @@
+ #endif
+ 
+ VersionManager::VersionManager() : m_versionList(m_versions), m_archival(LAUNCHER_VERSIONDB_URL) {
+-    baseDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("mcpelauncher/versions");
++    baseDir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("MacCraft/store-versions");
+     QDir().mkpath(baseDir);
+     loadVersions();
+ }
+--- a/googleapkdownloadtask.cpp
++++ b/googleapkdownloadtask.cpp
+@@ -81,7 +81,7 @@
+         std::thread(success).detach();
+         return;
+     }
+-    auto apksdir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("mcpelauncher/apks");
++    auto apksdir = QDir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation)).filePath("MacCraft/apks");
+     QDir().mkpath(apksdir);
+     auto file = std::make_shared<QTemporaryFile>(QDir(apksdir).filePath(m_keepApks ? (m_packageName.toStdString() + "-" + componentName + "-XXXXXX.apk").data() : "temp-XXXXXX.apk"));
+     if(m_keepApks) {

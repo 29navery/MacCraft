@@ -1,5 +1,11 @@
 # Testing MacCraft
 
+## Packaged graphical app
+
+ARM64 macOS CI builds the app and runs it with `MACCRAFT_UI_SMOKE` pointing to an output directory, `QT_QPA_PLATFORM=offscreen`, and `QT_QUICK_BACKEND=software`. It verifies that the live QML welcome screen creates its Google sign-in button, saves `login.png`, navigates to the real home screen in test mode, and saves `home.png`. Test mode uses the Qt test settings identity, avoids Keychain access and version-list requests, and does not sign into Google or start game delivery. The app then exits. The screenshots are uploaded as the `MacCraft-UI-previews` artifact.
+
+On a physical Mac, test sign-in, cancellation, account purchase failure, an owned game download including splits, install, Play, restart with a remembered account, and sign-out. Confirm that a second Mac without Homebrew can open the packaged app and Google login window. These live-account checks have not been completed by CI. Microsoft/Xbox game services are separate from Google Play access.
+
 ## Automated checks
 
 ```sh
