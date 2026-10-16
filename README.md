@@ -19,8 +19,8 @@ The developer app is ad-hoc signed, not notarized. If macOS blocks it, use **Sys
 - A Mac app bundle with a MacCraft welcome screen and embedded Google sign-in window.
 - The pinned upstream launcher’s real Google Play authentication, purchase verification, delivery, split-package download, installation, version profiles, and Play workflow.
 - ARM64-only store requests, avoiding incompatible x86/32-bit packages.
-- Account encryption keys in **macOS Keychain**, with a private browser session for Google sign-in and rejected certificate errors.
-- The patched native Bedrock runtime, its libraries, Qt, the embedded browser, and third-party dylibs bundled into the app.
+- Account encryption keys in **macOS Keychain**, with a private macOS WebKit browser session for Google sign-in and rejected certificate errors.
+- The patched native Bedrock runtime, its libraries, Qt and third-party dylibs bundled into the app.
 - A built-in game log and separate MacCraft settings, profiles, downloads, and worlds.
 
 Google sign-in is for obtaining your Android game. Microsoft/Xbox sign-in is separate and happens inside Minecraft; account-dependent game features still need work in the native runtime.
@@ -53,7 +53,7 @@ Account settings use the MacCraft application identity; the key protecting saved
 On ARM64 macOS, install Xcode Command Line Tools and Homebrew, then:
 
 ```sh
-brew install python cmake ninja openssl@3 qtbase qtdeclarative qtsvg qtwebengine qttools protobuf libzip
+brew install python cmake ninja openssl@3 qtbase qtdeclarative qtsvg qttools protobuf libzip
 git clone --recurse-submodules https://github.com/29navery/MacCraft.git
 cd MacCraft
 cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_OSX_ARCHITECTURES=arm64

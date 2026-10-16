@@ -28,7 +28,8 @@ def collect():
                 continue
             name = path.name.upper()
             if (name.startswith(("LICENSE", "LICENCE", "COPYING", "COPYRIGHT"))
-                    or name in ("NOTICE", "NOTICE.TXT", "THIRD_PARTY_NOTICES")):
+                    or name in ("NOTICE", "NOTICE.TXT", "THIRD_PARTY_NOTICES")
+                    or any(part.upper() in ("LICENSES", "LICENCES", "COPYRIGHTS") for part in path.relative_to(source).parts)):
                 target = destination / prefix / path.relative_to(source)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(path, target)
@@ -42,6 +43,7 @@ def collect():
         "runtime_revision": "91220f0f7ccfd460090d14056ab1bf12e82869b1",
         "build_instructions": "README.md",
         "patches": "patches/",
+        "launcher_revision": "779d057d9d729e492c403d4e0927006342da1dfe",
     }, indent=2) + "\n")
     print("Collected %s dependency license/notice files" % count)
 

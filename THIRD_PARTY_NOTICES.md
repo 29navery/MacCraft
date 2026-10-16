@@ -16,7 +16,7 @@ The graphical launcher and Google Play integration use:
 
 - https://github.com/minecraft-linux/mcpelauncher-ui-manifest (Qt 6 branch, pinned `779d057d9d729e492c403d4e0927006342da1dfe`).
 - Its mcpelauncher-ui-qt, playdl-signin-ui-qt, Google-Play-API, extraction and supporting submodules, each retaining its original license.
-- Qt 6 and Qt WebEngine, with their original Qt and Chromium third-party licenses. https://www.qt.io/licensing/ and https://doc.qt.io/qt-6/qtwebengine-licensing.html.
+- Qt 6, with its original Qt and third-party licenses: https://www.qt.io/licensing/. Google sign-in uses the system WebKit framework on macOS; Chromium is not bundled.
 - Protocol Buffers, Abseil, libzip, OpenSSL, and their dependencies, retaining their upstream licenses.
 
 MacCraft's welcome screen, packaging, integration patches, and macOS Keychain adapter are MacCraft changes, not upstream originals. Corresponding source and patches are available in this repository at the revision recorded in the app's bundled `source.json`.

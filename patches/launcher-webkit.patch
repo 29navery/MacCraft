@@ -1,0 +1,17 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -10,7 +10,13 @@
+ option(USE_WEBENGINE "Use the QT Webengine for the google sign in" ON)
+ 
+ find_package(Qt6 COMPONENTS Core Widgets REQUIRED)
+-add_library(playdl-signin-ui-qt-lib src/googleloginwindow.cpp include/googleloginwindow.h src/materialbusyindicator.cpp src/materialbusyindicator.h googlesigninui.qrc)
++if(APPLE)
++    add_library(playdl-signin-ui-qt-lib src/googleloginwindow_mac.mm include/googleloginwindow.h googlesigninui.qrc)
++    set_source_files_properties(src/googleloginwindow_mac.mm PROPERTIES COMPILE_FLAGS "-fobjc-arc")
++    target_link_libraries(playdl-signin-ui-qt-lib PUBLIC "-framework WebKit" "-framework AppKit")
++else()
++    add_library(playdl-signin-ui-qt-lib src/googleloginwindow.cpp include/googleloginwindow.h src/materialbusyindicator.cpp src/materialbusyindicator.h googlesigninui.qrc)
++endif()
+ if(USE_WEBENGINE)
+ find_package(Qt6 COMPONENTS WebEngineWidgets REQUIRED)
+ set(WEBENGINEDEPS Qt6::WebEngineWidgets)

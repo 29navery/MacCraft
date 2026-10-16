@@ -22,13 +22,15 @@ def prepare(source):
         raise ValueError("Launcher source revision does not match the pin")
     for name, directory in (("launcher-maccraft.patch", "mcpelauncher-ui-qt"),
                             ("launcher-signin.patch", "playdl-signin-ui-qt"),
-                            ("launcher-home.patch", "mcpelauncher-ui-qt")):
+                            ("launcher-home.patch", "mcpelauncher-ui-qt"),
+                            ("launcher-webkit.patch", "playdl-signin-ui-qt")):
         patch = ROOT / "patches" / name
         target = source / directory
         applied = subprocess.run(["git", "apply", "--reverse", "--check", str(patch)], cwd=target, capture_output=True)
         if applied.returncode:
             run("git", "apply", "--check", patch, cwd=target)
             run("git", "apply", patch, cwd=target)
+    shutil.copyfile(ROOT / "ui/googleloginwindow_mac.mm", source / "playdl-signin-ui-qt/src/googleloginwindow_mac.mm")
     target = source / "mcpelauncher-ui-qt"
     for name in ("MacCraftKeychain.h", "MacCraftKeychain.mm"):
         shutil.copyfile(ROOT / "ui" / name, target / name)
@@ -99,12 +101,19 @@ def main():
         parser.error("Build the native runtime first with scripts/build_runtime.py")
     brew = subprocess.check_output(["brew", "--prefix"], text=True).strip()
     prefixes = [brew + "/opt/" + n for n in ("qtbase", "qtdeclarative", "qtsvg", "qtwebengine", "qtwebchannel", "qttools", "protobuf", "abseil", "libzip", "openssl@3")]
+    # Homebrew distributes Qt across separate formula prefixes. Pin discovered component
+    # config directories explicitly instead of relying on Qt's single-prefix lookup.
+    qt_configs = {}
+    for prefix in prefixes:
+        for config in Path(prefix).glob("lib/cmake/Qt6*/Qt6*Config.cmake"):
+            qt_configs[config.parent.name] = config.parent
+    qt_dirs = ["-D" + name + "_DIR=" + str(path) for name, path in sorted(qt_configs.items())]
     build = ROOT / "build/launcher"
     compiler_cache = ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"] if shutil.which("ccache") else []
-    run("cmake", "-S", source, "-B", build, "-G", "Ninja", *compiler_cache,
+    run("cmake", "-S", source, "-B", build, "-G", "Ninja", *compiler_cache, *qt_dirs,
         "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_OSX_ARCHITECTURES=arm64",
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5", "-DCMAKE_PREFIX_PATH=" + ";".join(prefixes + [brew]),
-        "-DOPENSSL_ROOT_DIR=" + brew + "/opt/openssl@3", "-DUSE_WEBENGINE=ON",
+        "-DOPENSSL_ROOT_DIR=" + brew + "/opt/openssl@3", "-DUSE_WEBENGINE=OFF",
         "-DGAME_LAUNCHER_PATH=.", "-DLAUNCHER_VERSION_NAME=MacCraft 0.2.0", "-DLAUNCHER_VERSION_CODE=2",
         "-DLAUNCHER_ENABLE_GOOGLE_PLAY_LICENCE_CHECK=ON", "-DLAUNCHER_ENABLE_GLFW=OFF",
         "-DENABLE_UPDATE_CHECK=OFF", "-DENABLE_APPIMAGE_UPDATE_CHECK=OFF")

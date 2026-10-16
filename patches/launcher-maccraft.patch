@@ -111,7 +111,7 @@
  }
 --- a/googleloginhelper.cpp
 +++ b/googleloginhelper.cpp
-@@ -8,14 +8,23 @@
+@@ -8,14 +8,24 @@
  #include "supportedandroidabis.h"
  #include "launchersettings.h"
  #include "encryption.h"
@@ -128,6 +128,7 @@
 +    if(!qEnvironmentVariableIsSet("MACCRAFT_UI_SMOKE")) {
 +        try {
 +            unlockkey = macCraftReadAccountKey();
++            if(!unlockkey.isEmpty()) loginCache.setKey(unlockkey.toStdString());
 +            loadAccount();
 +        } catch(const std::exception& ex) {
 +            const auto message = QString::fromUtf8(ex.what());

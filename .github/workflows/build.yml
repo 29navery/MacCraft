@@ -37,7 +37,7 @@ jobs:
       - name: Verify native runner and install dependencies
         run: |
           test "$(uname -m)" = arm64
-          brew install cmake ccache ninja openssl@3 qtbase qtdeclarative qtsvg qtwebengine qttools protobuf libzip
+          brew install cmake ccache ninja openssl@3 qtbase qtdeclarative qtsvg qttools protobuf libzip
       - name: Restore compiler cache
         uses: actions/cache/restore@v4
         with:
