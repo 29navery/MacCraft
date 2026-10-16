@@ -24,6 +24,9 @@ jobs:
   native-arm64:
     runs-on: macos-15
     timeout-minutes: 60
+    env:
+      CCACHE_DIR: ${{ github.workspace }}/build/ccache
+      CCACHE_MAXSIZE: 2G
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,7 +37,13 @@ jobs:
       - name: Verify native runner and install dependencies
         run: |
           test "$(uname -m)" = arm64
-          brew install cmake ninja openssl@3 qtbase qtdeclarative qtsvg qtwebengine qttools protobuf libzip
+          brew install cmake ccache ninja openssl@3 qtbase qtdeclarative qtsvg qtwebengine qttools protobuf libzip
+      - name: Restore compiler cache
+        uses: actions/cache/restore@v4
+        with:
+          path: build/ccache
+          key: maccraft-arm64-${{ github.sha }}
+          restore-keys: maccraft-arm64-
       - name: Build MacCraft graphics probe and test package handling
         run: |
           cmake -S . -B build/native -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_OSX_ARCHITECTURES=arm64
@@ -73,3 +82,9 @@ jobs:
           name: MacCraft-arm64-developer
           path: dist/MacCraft-arm64-developer.tar.gz
           if-no-files-found: error
+      - name: Save compiler cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: build/ccache
+          key: maccraft-arm64-${{ github.sha }}

@@ -1,0 +1,73 @@
+--- a/qml/HomeScreen.qml
++++ b/qml/HomeScreen.qml
+@@ -23,7 +23,7 @@
+     property string warnMessage: ""
+     property string warnUrl: ""
+ 
+-    property bool statusChecking: !isVersionsInitialized || playVerChannel.licenseStatus === 0 || playVerChannel.licenseStatus === 1
++    property bool statusChecking: (!isVersionsInitialized && profileManager.activeProfile.versionType !== ProfileInfo.LATEST_GOOGLE_PLAY) || playVerChannel.licenseStatus === 0 || playVerChannel.licenseStatus === 1
+     property string activeVersionName: getDisplayedVersionName()
+     property bool activeVersionNeedsDownload: needsDownload()
+     property bool activeVersionSupported: checkSupport()
+@@ -690,18 +690,8 @@
+     }
+ 
+     function launcherLatestVersionscode() {
+-        console.log("Query version")
+-        if (!isVersionsInitialized) {
+-            return 0
+-        }
+-        if (checkGooglePlayLatestSupport()) {
+-            console.log("Use play version")
+-            return playScreen.playVerChannel.latestVersionCode
+-        } else {
+-            console.log("Use compat version")
+-            const ver = launcherLatestVersion()
+-            return ver ? ver.versionCode : 0
+-        }
++        // The default profile follows the release offered to this Google Play account.
++        return playScreen.playVerChannel.latestVersionCode
+     }
+ 
+     function needsDownload() {
+@@ -794,8 +784,11 @@
+ 
+     // Tests if it really works
+     function checkLauncherLatestSupport() {
+-        const latestCode = launcherLatestVersionscode()
+-        return versionManager.availableArchivalVersions.length === 0 || launcherSettings.showUnsupported || (launcherSettings.showUnverified || findArchivalVersion(latestCode) !== null || checkRollForward(latestCode))
++        const code = launcherLatestVersionscode()
++        if (code <= 0) return false
++        playScreen.warnMessage = findArchivalVersion(code) === null ? qsTr("This Google Play version has not been verified with MacCraft. If it does not start, select an older version in your profile.") : ""
++        playScreen.warnUrl = ""
++        return true
+     }
+ 
+     function checkRollForward(code) {
+--- a/qml/SettingsAboutSection.qml
++++ b/qml/SettingsAboutSection.qml
+@@ -21,7 +21,7 @@
+         font.pointSize: 12
+         font.bold: true
+         color: "#fff"
+-        text: qsTr("Launcher")
++        text: "MacCraft"
+     }
+ 
+     Text {
+@@ -40,13 +40,13 @@
+         Repeater {
+             model: [{
+                     "label": qsTr("Source"),
+-                    "link": "https://github.com/minecraft-linux/mcpelauncher-manifest"
++                    "link": "https://github.com/29navery/MacCraft"
+                 }, {
+                     "label": qsTr("Discord"),
+                     "link": "https://discord.gg/TaUNBXr"
+                 }, {
+                     "label": qsTr("Docs"),
+-                    "link": "https://minecraft-linux.github.io"
++                    "link": "https://github.com/29navery/MacCraft#readme"
+                 }]
+             delegate: Text {
+                 font.pointSize: 10

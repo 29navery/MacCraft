@@ -21,7 +21,8 @@ def prepare(source):
     if revision != REVISION:
         raise ValueError("Launcher source revision does not match the pin")
     for name, directory in (("launcher-maccraft.patch", "mcpelauncher-ui-qt"),
-                            ("launcher-signin.patch", "playdl-signin-ui-qt")):
+                            ("launcher-signin.patch", "playdl-signin-ui-qt"),
+                            ("launcher-home.patch", "mcpelauncher-ui-qt")):
         patch = ROOT / "patches" / name
         target = source / directory
         applied = subprocess.run(["git", "apply", "--reverse", "--check", str(patch)], cwd=target, capture_output=True)
@@ -99,7 +100,8 @@ def main():
     brew = subprocess.check_output(["brew", "--prefix"], text=True).strip()
     prefixes = [brew + "/opt/" + n for n in ("qtbase", "qtdeclarative", "qtsvg", "qtwebengine", "qtwebchannel", "qttools", "protobuf", "abseil", "libzip", "openssl@3")]
     build = ROOT / "build/launcher"
-    run("cmake", "-S", source, "-B", build, "-G", "Ninja",
+    compiler_cache = ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"] if shutil.which("ccache") else []
+    run("cmake", "-S", source, "-B", build, "-G", "Ninja", *compiler_cache,
         "-DCMAKE_BUILD_TYPE=Release", "-DCMAKE_OSX_ARCHITECTURES=arm64",
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5", "-DCMAKE_PREFIX_PATH=" + ";".join(prefixes + [brew]),
         "-DOPENSSL_ROOT_DIR=" + brew + "/opt/openssl@3", "-DUSE_WEBENGINE=ON",

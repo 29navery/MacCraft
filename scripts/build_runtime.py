@@ -3,6 +3,7 @@
 import argparse
 import os
 import platform
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -48,7 +49,8 @@ def main():
         return
     build = ROOT / "build/runtime"
     brew = subprocess.check_output(["brew", "--prefix"], text=True).strip()
-    run("cmake", "-S", source, "-B", build, "-G", "Ninja",
+    compiler_cache = ["-DCMAKE_C_COMPILER_LAUNCHER=ccache", "-DCMAKE_CXX_COMPILER_LAUNCHER=ccache"] if shutil.which("ccache") else []
+    run("cmake", "-S", source, "-B", build, "-G", "Ninja", *compiler_cache,
         "-DCMAKE_BUILD_TYPE=RelWithDebInfo", "-DCMAKE_OSX_ARCHITECTURES=arm64",
         "-DCMAKE_POLICY_VERSION_MINIMUM=3.5", "-DCMAKE_INSTALL_PREFIX=" + str(build / "install"),
         "-DCMAKE_PREFIX_PATH=" + brew, "-DOPENSSL_ROOT_DIR=" + brew + "/opt/openssl@3",
