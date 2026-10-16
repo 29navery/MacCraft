@@ -17,7 +17,13 @@ def collect():
                            ("launcher", ROOT / "vendor/launcher")]
     if shutil.which("brew"):
         brew = Path(subprocess.check_output(["brew", "--prefix"], text=True).strip())
-        for formula in ("qtbase", "qtdeclarative", "qtwebengine", "qtwebchannel", "qtsvg", "qttools", "protobuf", "abseil", "libzip", "openssl@3"):
+        formulas = {name for name in ("qtbase", "qtdeclarative", "qtwebengine", "qtwebchannel", "qtsvg", "qttools", "protobuf", "abseil", "libzip", "openssl@3")
+                    if (brew / "opt" / name).exists()}
+        # Qt and the Play API also link transitive libraries (for example Brotli).
+        # Preserve notices for the installed dependency closure, not only direct formulae.
+        dependencies = subprocess.check_output(["brew", "deps", "--installed", "--union", *sorted(formulas)], text=True)
+        formulas.update(dependencies.splitlines())
+        for formula in sorted(formulas):
             if (brew / "opt" / formula).exists():
                 sources.append(("dependencies/" + formula, (brew / "opt" / formula).resolve()))
     for prefix, source in sources:
